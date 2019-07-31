@@ -2,6 +2,7 @@ package manifest
 
 import (
 	"encoding/pem"
+	binet "github.com/cloudfoundry/bosh-cli/common/net"
 	"strings"
 
 	bosherr "github.com/cloudfoundry/bosh-utils/errors"
@@ -132,7 +133,11 @@ func (p *parser) Parse(path string, vars boshtpl.Variables, op patch.Op, release
 		if err != nil {
 			return Manifest{}, bosherr.WrapError(err, "Generating registry password")
 		}
-		installationManifest.PopulateRegistry("registry", password, "127.0.0.1", 6901, comboManifest.CloudProvider.SSHTunnel)
+		port, err := binet.GetFreePort()
+		if err != nil {
+			return Manifest{}, bosherr.WrapError(err, "Getting free port for registry")
+		}
+		installationManifest.PopulateRegistry("registry", password, "127.0.0.1", port, comboManifest.CloudProvider.SSHTunnel)
 	}
 
 	err = p.validator.Validate(installationManifest, releaseSetManifest)

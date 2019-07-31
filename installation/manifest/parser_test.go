@@ -154,6 +154,7 @@ cloud_provider:
 						installationManifest, err := parser.Parse(comboManifestPath, boshtpl.StaticVariables{}, patch.Ops{}, releaseSetManifest)
 						Expect(err).ToNot(HaveOccurred())
 
+						Expect(installationManifest.Registry.Port).ShouldNot(BeZero())
 						Expect(installationManifest).To(Equal(manifest.Manifest{
 							Name: "fake-deployment-name",
 							Template: manifest.ReleaseJobRef{
@@ -163,7 +164,7 @@ cloud_provider:
 							Properties: biproperty.Map{
 								"registry": biproperty.Map{
 									"host":     "127.0.0.1",
-									"port":     6901,
+									"port":     installationManifest.Registry.Port,
 									"username": "registry",
 									"password": "fake-uuid",
 								},
@@ -188,7 +189,7 @@ bX621YeY03FF5+TCF6Zwk4yT/NWMwJz8Fpb9QQA=
 `,
 								},
 								Host:     "127.0.0.1",
-								Port:     6901,
+								Port:     installationManifest.Registry.Port,
 								Username: "registry",
 								Password: "fake-uuid",
 							},
@@ -266,6 +267,7 @@ cloud_provider:
 						installationManifest, err := parser.Parse(comboManifestPath, boshtpl.StaticVariables{}, patch.Ops{}, releaseSetManifest)
 						Expect(err).ToNot(HaveOccurred())
 
+						Expect(installationManifest.Registry.Port).ShouldNot(BeZero())
 						Expect(installationManifest).To(Equal(manifest.Manifest{
 							Name: "fake-deployment-name",
 							Template: manifest.ReleaseJobRef{
@@ -275,7 +277,7 @@ cloud_provider:
 							Properties: biproperty.Map{
 								"registry": biproperty.Map{
 									"host":     "127.0.0.1",
-									"port":     6901,
+									"port":     installationManifest.Registry.Port,
 									"username": "registry",
 									"password": "fake-uuid",
 								},
@@ -303,7 +305,7 @@ AgMEBQYH
 `,
 								},
 								Host:     "127.0.0.1",
-								Port:     6901,
+								Port:     installationManifest.Registry.Port,
 								Username: "registry",
 								Password: "fake-uuid",
 							},
@@ -407,6 +409,7 @@ cloud_provider:
 						installationManifest, err := parser.Parse(comboManifestPath, boshtpl.StaticVariables{}, patch.Ops{}, releaseSetManifest)
 						Expect(err).ToNot(HaveOccurred())
 
+						Expect(installationManifest.Registry.Port).ShouldNot(BeZero())
 						Expect(installationManifest).To(Equal(manifest.Manifest{
 							Name: "fake-deployment-name",
 							Template: manifest.ReleaseJobRef{
@@ -416,7 +419,7 @@ cloud_provider:
 							Properties: biproperty.Map{
 								"registry": biproperty.Map{
 									"host":     "127.0.0.1",
-									"port":     6901,
+									"port":     installationManifest.Registry.Port,
 									"username": "registry",
 									"password": "fake-uuid",
 								},
@@ -429,7 +432,7 @@ cloud_provider:
 									PrivateKey: "--- BEGIN KEY --- blah --- END KEY ---",
 								},
 								Host:     "127.0.0.1",
-								Port:     6901,
+								Port:     installationManifest.Registry.Port,
 								Username: "registry",
 								Password: "fake-uuid",
 							},
@@ -461,6 +464,7 @@ cloud_provider:
 						installationManifest, err := parser.Parse(comboManifestPath, boshtpl.StaticVariables{}, patch.Ops{}, releaseSetManifest)
 						Expect(err).ToNot(HaveOccurred())
 
+						Expect(installationManifest.Registry.Port).ShouldNot(BeZero())
 						Expect(installationManifest).To(Equal(manifest.Manifest{
 							Name: "fake-deployment-name",
 							Template: manifest.ReleaseJobRef{
@@ -470,7 +474,7 @@ cloud_provider:
 							Properties: biproperty.Map{
 								"registry": biproperty.Map{
 									"host":     "127.0.0.1",
-									"port":     6901,
+									"port":     installationManifest.Registry.Port,
 									"username": "registry",
 									"password": "fake-uuid",
 								},
@@ -483,7 +487,7 @@ cloud_provider:
 									PrivateKey: "--- BEGIN KEY --- blah --- END KEY ---",
 								},
 								Host:     "127.0.0.1",
-								Port:     6901,
+								Port:     installationManifest.Registry.Port,
 								Username: "registry",
 								Password: "fake-uuid",
 							},
@@ -516,6 +520,7 @@ cloud_provider:
 						installationManifest, err := parser.Parse(comboManifestPath, boshtpl.StaticVariables{}, patch.Ops{}, releaseSetManifest)
 						Expect(err).ToNot(HaveOccurred())
 
+						Expect(installationManifest.Registry.Port).ShouldNot(BeZero())
 						Expect(installationManifest).To(Equal(manifest.Manifest{
 							Name: "fake-deployment-name",
 							Template: manifest.ReleaseJobRef{
@@ -525,7 +530,7 @@ cloud_provider:
 							Properties: biproperty.Map{
 								"registry": biproperty.Map{
 									"host":     "127.0.0.1",
-									"port":     6901,
+									"port":     installationManifest.Registry.Port,
 									"username": "registry",
 									"password": "fake-uuid",
 								},
@@ -538,7 +543,7 @@ cloud_provider:
 									PrivateKey: "--- BEGIN KEY --- blah --- END KEY ---",
 								},
 								Host:     "127.0.0.1",
-								Port:     6901,
+								Port:     installationManifest.Registry.Port,
 								Username: "registry",
 								Password: "fake-uuid",
 							},
@@ -653,6 +658,7 @@ cloud_provider:
 				installationManifest, err := parser.Parse(comboManifestPath, vars, ops, releaseSetManifest)
 				Expect(err).ToNot(HaveOccurred())
 
+				Expect(installationManifest.Registry.Port).ShouldNot(BeZero())
 				Expect(installationManifest).To(Equal(manifest.Manifest{
 					Name: "replaced-name",
 					Template: manifest.ReleaseJobRef{
@@ -662,7 +668,7 @@ cloud_provider:
 					Properties: biproperty.Map{
 						"registry": biproperty.Map{
 							"host":     "127.0.0.1",
-							"port":     6901,
+							"port":     installationManifest.Registry.Port,
 							"username": "registry",
 							"password": "fake-uuid",
 						},
@@ -675,7 +681,7 @@ cloud_provider:
 							PrivateKey: "--- BEGIN KEY --- blah --- END KEY ---",
 						},
 						Host:     "127.0.0.1",
-						Port:     6901,
+						Port:     installationManifest.Registry.Port,
 						Username: "registry",
 						Password: "fake-uuid",
 					},
