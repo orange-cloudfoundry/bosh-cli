@@ -5,6 +5,9 @@ before:
 builds:
 - env:
   - CGO_ENABLED=0
+  ldflags:
+    - -w -s
+    - -X github.com/cloudfoundry/bosh-cli/cmd.VersionLabel={{.Version}}
 archives:
 - replacements:
     darwin: Darwin
