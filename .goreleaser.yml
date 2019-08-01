@@ -8,13 +8,7 @@ builds:
   ldflags:
     - -w -s
     - -X github.com/cloudfoundry/bosh-cli/cmd.VersionLabel={{.Version}}
-archives:
-- replacements:
-    darwin: Darwin
-    linux: Linux
-    windows: Windows
-    386: i386
-    amd64: x86_64
+archives: []
 checksum:
   name_template: 'checksums.txt'
 snapshot:
