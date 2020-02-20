@@ -134,13 +134,13 @@ var _ = Describe("Director", func() {
 					ghttp.VerifyHeader(http.Header{
 						"Content-Type": []string{"application/json"},
 					}),
-					ghttp.VerifyBody([]byte(`{"config":{"remove_all":true}}`)),
+					ghttp.VerifyBody([]byte(`{"config":{"keep_orphaned_disks":false,"remove_all":true}}`)),
 				),
 				"",
 				server,
 			)
 
-			err := dir.CleanUp(true)
+			_, err := dir.CleanUp(true, false, false)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -152,20 +152,38 @@ var _ = Describe("Director", func() {
 					ghttp.VerifyHeader(http.Header{
 						"Content-Type": []string{"application/json"},
 					}),
-					ghttp.VerifyBody([]byte(`{"config":{"remove_all":false}}`)),
+					ghttp.VerifyBody([]byte(`{"config":{"keep_orphaned_disks":false,"remove_all":false}}`)),
 				),
 				"",
 				server,
 			)
 
-			err := dir.CleanUp(false)
+			_, err := dir.CleanUp(false, false, false)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("cleans up all resources except for orphaned disks and returns without an error", func() {
+			ConfigureTaskResult(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("POST", "/cleanup"),
+					ghttp.VerifyBasicAuth("username", "password"),
+					ghttp.VerifyHeader(http.Header{
+						"Content-Type": []string{"application/json"},
+					}),
+					ghttp.VerifyBody([]byte(`{"config":{"keep_orphaned_disks":true,"remove_all":true}}`)),
+				),
+				"",
+				server,
+			)
+
+			_, err := dir.CleanUp(true, false, true)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("returns error if response is non-200", func() {
 			AppendBadRequest(ghttp.VerifyRequest("POST", "/cleanup"), server)
 
-			err := dir.CleanUp(true)
+			_, err := dir.CleanUp(true, false, false)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Cleaning up resources"))
 		})
@@ -220,6 +238,88 @@ var _ = Describe("Director", func() {
 			dir = dir.WithContext(contextId)
 			err := dir.DownloadResourceUnchecked("blob-id", buf)
 			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	Describe("Certificate Expiry info", func() {
+		It("Returns the director's certificates expiry info", func() {
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/director/certificate_expiry"),
+					ghttp.VerifyBasicAuth("username", "password"),
+					ghttp.RespondWithJSONEncoded(http.StatusOK, []map[string]interface{}{
+						{
+							"certificate_path": "foo",
+							"expiry":           "2019-11-21T21:43:58Z",
+							"days_left":        351,
+						},
+						{
+							"certificate_path": "bar",
+							"expiry":           "2018-12-04T21:43:58Z",
+							"days_left":        0,
+						},
+						{
+							"certificate_path": "baz",
+							"expiry":           "2018-11-21T21:43:58Z",
+							"days_left":        -5,
+						},
+					}),
+				),
+			)
+
+			certificateInfo, err := dir.CertificateExpiry()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(certificateInfo).To(ConsistOf(
+				[]director.CertificateExpiryInfo{
+					{Path: "foo", Expiry: "2019-11-21T21:43:58Z", DaysLeft: 351},
+					{Path: "bar", Expiry: "2018-12-04T21:43:58Z", DaysLeft: 0},
+					{Path: "baz", Expiry: "2018-11-21T21:43:58Z", DaysLeft: -5},
+				}))
+		})
+
+		It("returns 'not supported' if endpoint does not exist on director", func() {
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/director/certificate_expiry"),
+					ghttp.VerifyBasicAuth("username", "password"),
+					ghttp.RespondWith(http.StatusNotFound, ``),
+				),
+			)
+
+			resp, err := dir.CertificateExpiry()
+
+			Expect(resp).To(BeNil())
+			Expect(err.Error()).To(ContainSubstring("Certificate expiry information not supported"))
+		})
+
+		It("promotes non-404 response errors", func() {
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/director/certificate_expiry"),
+					ghttp.VerifyBasicAuth("username", "password"),
+					ghttp.RespondWith(http.StatusInternalServerError, ``),
+				),
+			)
+
+			resp, err := dir.CertificateExpiry()
+
+			Expect(resp).To(BeNil())
+			Expect(err.Error()).To(ContainSubstring("Getting certificate expiry endpoint error:"))
+		})
+
+		It("Returns an error when the response is invalid JSON", func() {
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/director/certificate_expiry"),
+					ghttp.VerifyBasicAuth("username", "password"),
+					ghttp.RespondWith(http.StatusOK, "{ 'foo"),
+				),
+			)
+
+			resp, err := dir.CertificateExpiry()
+
+			Expect(resp).To(BeNil())
+			Expect(err.Error()).To(ContainSubstring("Getting certificate expiry endpoint error:"))
 		})
 	})
 })

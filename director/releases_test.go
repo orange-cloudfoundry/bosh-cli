@@ -145,6 +145,10 @@ var _ = Describe("Director", func() {
 			return director.HasRelease("name", "ver", stemcell)
 		}
 
+		BeforeEach(func() {
+			stemcell = OSVersionSlug{}
+		})
+
 		It("returns true if name and version matches", func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
@@ -416,6 +420,44 @@ var _ = Describe("Release", func() {
 	Describe("Name", func() {
 		It("returns name", func() {
 			Expect(release.Name()).To(Equal("name"))
+		})
+	})
+
+	Describe("Exists", func() {
+		It("returns true if release exists", func() {
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/releases"),
+					ghttp.VerifyBasicAuth("username", "password"),
+					ghttp.RespondWith(http.StatusOK, `[{"name":"name","release_versions":[{"version":"ver"}]}]`),
+				),
+			)
+
+			exists, err := release.Exists()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeTrue())
+		})
+
+		It("returns false if release does not exist", func() {
+			server.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/releases"),
+					ghttp.VerifyBasicAuth("username", "password"),
+					ghttp.RespondWith(http.StatusOK, `[{"name":"other-name","release_versions":[{"version":"other-ver"}]}]`),
+				),
+			)
+
+			exists, err := release.Exists()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exists).To(BeFalse())
+		})
+
+		It("returns false and an error when failing to get the release slug", func() {
+			AppendBadRequest(ghttp.VerifyRequest("GET", "/releases"), server)
+
+			exists, err := release.Exists()
+			Expect(err).To(HaveOccurred())
+			Expect(exists).To(BeFalse())
 		})
 	})
 

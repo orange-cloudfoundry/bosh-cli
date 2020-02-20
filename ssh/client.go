@@ -1,7 +1,10 @@
 package ssh
 
 import (
+	"context"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net"
 	"strings"
 	"time"
@@ -112,14 +115,15 @@ func (s *ClientImpl) Stop() error {
 }
 
 func (s *ClientImpl) newClient(network, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
-	dialFunc := net.Dial
+	dialer := net.Dialer{}
+	dialContextFunc := dialer.DialContext
 
 	if !s.opts.DisableSOCKS {
-		socksProxy := proxy.NewSocks5Proxy(proxy.NewHostKey(), nil)
-		dialFunc = boshhttp.SOCKS5DialFuncFromEnvironment(net.Dial, socksProxy)
+		socksProxy := proxy.NewSocks5Proxy(proxy.NewHostKey(), log.New(ioutil.Discard, "", log.LstdFlags), 1*time.Minute)
+		dialContextFunc = boshhttp.SOCKS5DialContextFuncFromEnvironment(&net.Dialer{}, socksProxy)
 	}
 
-	conn, err := dialFunc(network, addr)
+	conn, err := dialContextFunc(context.Background(), network, addr)
 	if err != nil {
 		return nil, err
 	}

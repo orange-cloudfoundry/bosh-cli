@@ -9,9 +9,12 @@ import (
 	"errors"
 	"os"
 
+	"fmt"
+
 	boshcmdfakes "github.com/cloudfoundry/bosh-utils/fileutil/fakes"
 	biproperty "github.com/cloudfoundry/bosh-utils/property"
 	fakesys "github.com/cloudfoundry/bosh-utils/system/fakes"
+	. "github.com/onsi/ginkgo/extensions/table"
 )
 
 var _ = Describe("Stemcell", func() {
@@ -44,12 +47,33 @@ var _ = Describe("Stemcell", func() {
 		It("returns the manifest", func() {
 			Expect(stemcell.Manifest()).To(Equal(manifest))
 		})
+
+		Context("when stemcell.MF contains api_version", func() {
+			BeforeEach(func() {
+				manifest = Manifest{
+					Name:       "new-name",
+					ApiVersion: 42,
+				}
+
+				stemcell = NewExtractedStemcell(
+					manifest,
+					extractedPath,
+					compressor,
+					fakefs,
+				)
+			})
+
+			It("it populates api_version in manifest", func() {
+				Expect(stemcell.Manifest()).To(Equal(manifest))
+			})
+		})
 	})
 
 	Describe("Delete", func() {
 		var removeAllCalled bool
 
 		BeforeEach(func() {
+			removeAllCalled = false
 			fakefs.RemoveAllStub = func(_ string) error {
 				removeAllCalled = true
 				return nil
@@ -303,12 +327,11 @@ var _ = Describe("Stemcell", func() {
 		)
 
 		BeforeEach(func() {
+			removeAllCalled = false
 			extractedPath = "extracted-path"
 			destinationPath = "destination/tarball.tgz"
 
 			fakefs.MkdirAll("destination", os.ModeDir)
-			file := fakesys.NewFakeFile(destinationPath, fakefs)
-			fakefs.RegisterOpenFile(destinationPath, file)
 
 			stemcell = NewExtractedStemcell(
 				manifest,
@@ -325,48 +348,64 @@ var _ = Describe("Stemcell", func() {
 				compressedTarballPath = "bosh-platform-disk-TarballCompressor-CompressSpecificFilesInDir/generated-tarball.tgz"
 			})
 
-			It("packs the extracted stemcell", func() {
-				compressor.CompressFilesInDirTarballPath = compressedTarballPath
-				compressor.CompressFilesInDirErr = nil
-				compressor.CompressFilesInDirCallBack = func() {
-					fakefs.WriteFileString(compressedTarballPath, "hello")
-				}
+			DescribeTable("pack stemcell",
+				func(apiVersion int) {
+					if apiVersion > 0 {
+						manifest.ApiVersion = apiVersion
+						stemcell = NewExtractedStemcell(
+							manifest,
+							extractedPath,
+							compressor,
+							fakefs,
+						)
+					}
+					compressor.CompressFilesInDirTarballPath = compressedTarballPath
+					compressor.CompressFilesInDirErr = nil
+					compressor.CompressFilesInDirCallBack = func() {
+						fakefs.WriteFileString(compressedTarballPath, "hello")
+					}
 
-				removeAllCalled = false
-				fakefs.RenameError = nil
+					removeAllCalled = false
+					fakefs.RenameError = nil
 
-				fakefs.RemoveAllStub = func(path string) error {
-					removeAllCalled = true
-					Expect(path).To(Equal(extractedPath))
-					// We are returning an error to disable the removal of the directory containing the extracted files,
-					// particularly stemcell.MF, which we need to examine to test that OS/Version/Cloud Properties
-					// were properly updated.
-					return errors.New("Not error.")
-				}
+					fakefs.RemoveAllStub = func(path string) error {
+						removeAllCalled = true
+						Expect(path).To(Equal(extractedPath))
+						// We are returning an error to disable the removal of the directory containing the extracted files,
+						// particularly stemcell.MF, which we need to examine to test that OS/Version/Cloud Properties
+						// were properly updated.
+						return errors.New("Not error.")
+					}
 
-				err := stemcell.Pack(destinationPath)
-				Expect(err).ToNot(HaveOccurred())
+					err := stemcell.Pack(destinationPath)
+					Expect(err).ToNot(HaveOccurred())
 
-				Expect(fakefs.RenameOldPaths[0]).To(Equal(compressedTarballPath))
-				Expect(fakefs.RenameNewPaths[0]).To(Equal("destination/tarball.tgz"))
+					Expect(fakefs.RenameOldPaths[0]).To(Equal(compressedTarballPath))
+					Expect(fakefs.RenameNewPaths[0]).To(Equal("destination/tarball.tgz"))
 
-				Expect(compressor.CompressFilesInDirDir).To(Equal(extractedPath))
+					Expect(compressor.CompressFilesInDirDir).To(Equal(extractedPath))
 
-				newStemcellMFContent, err := fakefs.ReadFileString("extracted-path/stemcell.MF")
-				Expect(err).ToNot(HaveOccurred())
-				Expect(newStemcellMFContent).To(ContainSubstring("name: new-name"))
-				Expect(newStemcellMFContent).NotTo(ContainSubstring("stemcell_formats:"))
+					newStemcellMFContent, err := fakefs.ReadFileString("extracted-path/stemcell.MF")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(newStemcellMFContent).To(ContainSubstring("name: new-name"))
+					Expect(newStemcellMFContent).NotTo(ContainSubstring("stemcell_formats:"))
+					if apiVersion > 0 {
+						Expect(newStemcellMFContent).To(ContainSubstring(fmt.Sprintf("api_version: %d", apiVersion)))
+					} else {
+						Expect(newStemcellMFContent).NotTo(ContainSubstring("api_version:"))
+					}
 
-				Expect(fakefs.FileExists(compressedTarballPath)).To(BeFalse())
-				Expect(fakefs.FileExists(destinationPath)).To(BeTrue())
+					Expect(fakefs.FileExists(compressedTarballPath)).To(BeFalse())
+					Expect(fakefs.FileExists(destinationPath)).To(BeTrue())
 
-				Expect(removeAllCalled).To(BeTrue())
-			})
+					Expect(removeAllCalled).To(BeTrue())
+				},
+				Entry("api_version spefied", 42),
+				Entry("api_version NOT specified", 0),
+			)
 		})
 
 		Context("when the packaging fails", func() {
-			var err error
-
 			Context("when the extracted stemcell can't save its contents", func() {
 				It("returns an error", func() {
 					fakefs.RemoveAllStub = func(path string) error {
@@ -376,7 +415,7 @@ var _ = Describe("Stemcell", func() {
 					}
 					fakefs.WriteFileError = errors.New("could not write file")
 
-					err = stemcell.Pack(destinationPath)
+					err := stemcell.Pack(destinationPath)
 					Expect(err).To(HaveOccurred())
 
 					Expect(removeAllCalled).To(BeTrue())
@@ -394,7 +433,7 @@ var _ = Describe("Stemcell", func() {
 						return errors.New("Not error.")
 					}
 
-					err = stemcell.Pack(destinationPath)
+					err := stemcell.Pack(destinationPath)
 					Expect(err).To(HaveOccurred())
 
 					Expect(compressor.CompressFilesInDirDir).To(Equal(extractedPath))
@@ -412,7 +451,7 @@ var _ = Describe("Stemcell", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("could not copy file into place"))
 
-				Expect(removeAllCalled).To(BeTrue())
+				Expect(removeAllCalled).To(BeFalse())
 			})
 		})
 	})
