@@ -469,7 +469,7 @@ type DeployOpts struct {
 	Recreate                bool                `long:"recreate"                                description:"Recreate all VMs in deployment"`
 	RecreatePersistentDisks bool                `long:"recreate-persistent-disks"               description:"Recreate all persistent disks in deployment"`
 	Fix                     bool                `long:"fix"                                     description:"Recreate an instance with an unresponsive agent instead of erroring"`
-	SkipDrain               []boshdir.SkipDrain `long:"skip-drain" value-name:"INSTANCE-GROUP"  description:"Skip running drain and pre-stop scripts for specific instance groups" optional:"true" optional-value:"*"`
+	SkipDrain               []boshdir.SkipDrain `long:"skip-drain" value-name:"[INSTANCE-GROUP[/INSTANCE-ID]]"  description:"Skip running drain and pre-stop scripts for specific instance groups" optional:"true" optional-value:"*"`
 
 	Canaries    string `long:"canaries" description:"Override manifest values for canaries"`
 	MaxInFlight string `long:"max-in-flight" description:"Override manifest values for max_in_flight"`
@@ -895,13 +895,21 @@ type AllOrInstanceGroupOrInstanceSlugArgs struct {
 
 // SSH instance
 
+type SshSlugArgs struct {
+	Slug boshdir.AllOrInstanceGroupOrInstanceSlug `positional-arg-name:"INSTANCE-GROUP[/INSTANCE-ID] | IP"`
+}
+
 type SSHOpts struct {
-	Args AllOrInstanceGroupOrInstanceSlugArgs `positional-args:"true"`
+	Args SshSlugArgs `positional-args:"true"`
 
 	Command []string         `long:"command" short:"c" description:"Command"`
 	RawOpts TrimmedSpaceArgs `long:"opts"              description:"Options to pass through to SSH"`
 
 	Results bool `long:"results" short:"r" description:"Collect results into a table instead of streaming"`
+
+	PrivateKey FileBytesWithPathArg `long:"private-key" short:"i" description:"SSH using authorized key"`
+
+	Username string `long:"username" short:"l" description:"Login name for authorized key" default:"vcap"`
 
 	GatewayFlags
 
@@ -912,6 +920,10 @@ type SCPOpts struct {
 	Args SCPArgs `positional-args:"true" required:"true"`
 
 	Recursive bool `long:"recursive" short:"r" description:"Recursively copy entire directories. Note that symbolic links encountered are followed in the tree traversal"`
+
+	PrivateKey FileBytesWithPathArg `long:"private-key" short:"i" description:"SSH using authorized key"`
+
+	Username string `long:"username" short:"l" description:"Login name for authorized key" default:"vcap"`
 
 	GatewayFlags
 
